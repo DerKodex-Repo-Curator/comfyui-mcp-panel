@@ -87,6 +87,10 @@
     "name": "Endpoint type",
     "tooltip": "How the Ollama backend talks to its endpoint. 'Ollama (local)' uses the native /api/chat on your local Ollama. 'OpenAI-compatible' speaks /chat/completions — use it for OpenRouter, vLLM, LM Studio, DeepSeek etc. (set the base URL below; the API key comes from the orchestrator's env, e.g. OPENROUTER_API_KEY). Applies to NEW sessions — Disconnect then Connect after changing."
   },
+  "comfyui-mcp_ollama_numCtx": {
+    "name": "Context window",
+    "tooltip": "How much conversation the model can hold at once (Ollama's num_ctx). 'Auto' uses the model's own maximum, capped at 64K so a small GPU isn't overloaded. 'Max' uses the model's full window (256K on some models): best for long tool-heavy sessions, but the KV cache needs extra VRAM. A fixed size is never set above what the model supports. Applies from your next message."
+  },
   "comfyui-mcp_ollama_baseUrl": {
     "name": "Endpoint base URL",
     "tooltip": "Base URL for the endpoint above. Leave BLANK for local Ollama (http://127.0.0.1:11434). For OpenAI-compatible endpoints include the /v1 (e.g. https://openrouter.ai/api/v1). Applies to NEW sessions — Disconnect then Connect after changing."
