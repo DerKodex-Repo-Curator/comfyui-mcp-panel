@@ -6,6 +6,9 @@ All notable changes to this project are documented here. This project adheres to
 
 ## [Unreleased]
 
+### Added
+- Settings › Ollama › Context window: Auto (the model's native window, up to 64K), Max (its full window), or a fixed 16K–256K. Applies from the next message; needs comfyui-mcp with native-context support.
+
 ## [0.15.183] - 2026-10-01
 
 ### Changed

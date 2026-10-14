@@ -6264,6 +6264,10 @@ const SETTING_TOKEN_HF = "comfyui-mcp.setHuggingfaceToken";
 const SETTING_PREFERRED_MODELS = "comfyui-mcp.preferredModels";
 const SETTING_OLLAMA_API = "comfyui-mcp.ollama.api";
 const SETTING_OLLAMA_BASE_URL = "comfyui-mcp.ollama.baseUrl";
+// Ollama num_ctx: "auto" (native window up to 64K), "max" (full native) or a
+// token count. The orchestrator reads it fresh each turn, so it applies to the
+// next message of a live session.
+const SETTING_OLLAMA_NUM_CTX = "comfyui-mcp.ollama.numCtx";
 // OpenRouter API key button — stored 0600 in ~/.comfyui-mcp by the orchestrator
 // (agent-secret slice), never in ComfyUI settings. Enables the OpenRouter provider.
 const SETTING_TOKEN_OPENROUTER = "comfyui-mcp.setOpenrouterKey";
@@ -7509,6 +7513,33 @@ function panelSettingsList() {
         ];
       },
       defaultValue: "ollama",
+      onChange: () => {
+        if (suppressSettingOnChange || !settingsArmed) return;
+        panelHooks.applyAgentModelConfig?.();
+      },
+    },
+    {
+      id: SETTING_OLLAMA_NUM_CTX,
+      name: "Context window",
+      get category() { return cat(BACKEND_SECTION.ollama, "Context window"); },
+      sortOrder: 65,
+      tooltip:
+        "How much conversation the model can hold at once (Ollama's num_ctx). 'Auto' uses the model's own " +
+        "maximum, capped at 64K so a small GPU isn't overloaded. 'Max' uses the model's full window (256K on " +
+        "some models): best for long tool-heavy sessions, but the KV cache needs extra VRAM. A fixed size is " +
+        "never set above what the model supports. Applies from your next message.",
+      type: "combo",
+      get options() {
+        return [
+          { value: "auto", text: tr("panel.ctx_auto_native_up_to_64k", "Auto (model's window, up to 64K)") },
+          { value: "max", text: tr("panel.ctx_max_full_native_window", "Max (model's full window)") },
+          ...[16, 32, 64, 128, 256].map((k) => ({
+            value: String(k * 1024),
+            text: tr("panel.ctx_fixed_k_tokens", "{k}K tokens", { k }),
+          })),
+        ];
+      },
+      defaultValue: "auto",
       onChange: () => {
         if (suppressSettingOnChange || !settingsArmed) return;
         panelHooks.applyAgentModelConfig?.();
@@ -40886,9 +40917,10 @@ function buildPanel() {
       .filter(Boolean);
     const apiKind = String(getSetting(SETTING_OLLAMA_API) ?? "") === "openai" ? "openai" : "ollama";
     const baseUrl = String(getSetting(SETTING_OLLAMA_BASE_URL) ?? "").trim();
+    const numCtx = String(getSetting(SETTING_OLLAMA_NUM_CTX) ?? "auto") || "auto";
     const customUrl = String(getSetting(SETTING_CUSTOM_BASE_URL) ?? "").trim();
     const customModel = String(getSetting(SETTING_MODEL.custom) ?? "").trim();
-    if (!force && !preferred.length && apiKind === "ollama" && !baseUrl && !customUrl) return;
+    if (!force && !preferred.length && apiKind === "ollama" && !baseUrl && numCtx === "auto" && !customUrl) return;
     // `custom` only rides when configured or on a deliberate Settings edit
     // (force) — so a fresh browser with empty local settings can't clobber a
     // base URL persisted server-side from another machine.
@@ -40896,7 +40928,9 @@ function buildPanel() {
     client.sendFrame?.({
       type: "set_config",
       preferred_models: preferred,
-      ollama: { api: apiKind, base_url: baseUrl },
+      // num_ctx rides only when chosen or on a Settings edit, so a fresh
+      // browser left on "auto" can't reset a window picked on another machine.
+      ollama: { api: apiKind, base_url: baseUrl, ...(force || numCtx !== "auto" ? { num_ctx: numCtx } : {}) },
       ...(includeCustom
         ? { custom: { base_url: customUrl, ...(customModel ? { model: customModel } : {}) } }
         : {}),
